@@ -37,11 +37,89 @@ export const ExpressionDisplay: React.FC<ExpressionDisplayProps> = ({
         .replace(/x/g, `(${x})`)
         .replace(/×/g, '*');
       
-      // This is a simplified evaluator - in production, use the actual tree
-      return new Function('return ' + cleanExpr)();
+      // Safe evaluation using a simple parser
+      return safeEval(cleanExpr);
     } catch {
       return NaN;
     }
+  };
+
+  const safeEval = (expr: string): number => {
+    // Remove whitespace
+    expr = expr.replace(/\s/g, '');
+    
+    // Simple recursive descent parser for basic math expressions
+    let index = 0;
+    
+    const parseNumber = (): number => {
+      let num = '';
+      let negative = false;
+      
+      if (expr[index] === '-') {
+        negative = true;
+        index++;
+      } else if (expr[index] === '+') {
+        index++;
+      }
+      
+      while (index < expr.length && /[\d.]/.test(expr[index])) {
+        num += expr[index++];
+      }
+      
+      const result = parseFloat(num);
+      return negative ? -result : result;
+    };
+    
+    const parseFactor = (): number => {
+      if (expr[index] === '(') {
+        index++; // skip '('
+        const result = parseExpression();
+        index++; // skip ')'
+        return result;
+      }
+      return parseNumber();
+    };
+    
+    const parseTerm = (): number => {
+      let result = parseFactor();
+      
+      while (index < expr.length && (expr[index] === '*' || expr[index] === '/')) {
+        const op = expr[index++];
+        const right = parseFactor();
+        if (op === '*') {
+          result *= right;
+        } else {
+          if (right === 0) throw new Error('Division by zero');
+          result /= right;
+        }
+      }
+      
+      return result;
+    };
+    
+    const parseExpression = (): number => {
+      let result = parseTerm();
+      
+      while (index < expr.length && (expr[index] === '+' || expr[index] === '-')) {
+        const op = expr[index++];
+        const right = parseTerm();
+        if (op === '+') {
+          result += right;
+        } else {
+          result -= right;
+        }
+      }
+      
+      return result;
+    };
+    
+    const result = parseExpression();
+    
+    if (!isFinite(result)) {
+      throw new Error('Invalid result');
+    }
+    
+    return result;
   };
 
   const testValues = [-2, -1, 0, 1, 2];

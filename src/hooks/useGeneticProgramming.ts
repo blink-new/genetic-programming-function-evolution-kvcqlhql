@@ -45,11 +45,89 @@ class GeneticProgrammingSimulator {
     try {
       // Simple expression evaluator - safely replace x with value
       const cleanExpr = expr.replace(/x/g, `(${x})`);
-      // Use Function constructor instead of eval for better safety
-      return new Function('return ' + cleanExpr)();
+      // Safe evaluation using a simple parser for basic math expressions
+      return this.safeEval(cleanExpr);
     } catch {
       return Infinity;
     }
+  }
+
+  private safeEval(expr: string): number {
+    // Remove whitespace
+    expr = expr.replace(/\s/g, '');
+    
+    // Simple recursive descent parser for basic math expressions
+    let index = 0;
+    
+    const parseNumber = (): number => {
+      let num = '';
+      let negative = false;
+      
+      if (expr[index] === '-') {
+        negative = true;
+        index++;
+      } else if (expr[index] === '+') {
+        index++;
+      }
+      
+      while (index < expr.length && /[\d.]/.test(expr[index])) {
+        num += expr[index++];
+      }
+      
+      const result = parseFloat(num);
+      return negative ? -result : result;
+    };
+    
+    const parseFactor = (): number => {
+      if (expr[index] === '(') {
+        index++; // skip '('
+        const result = parseExpression();
+        index++; // skip ')'
+        return result;
+      }
+      return parseNumber();
+    };
+    
+    const parseTerm = (): number => {
+      let result = parseFactor();
+      
+      while (index < expr.length && (expr[index] === '*' || expr[index] === '/')) {
+        const op = expr[index++];
+        const right = parseFactor();
+        if (op === '*') {
+          result *= right;
+        } else {
+          if (right === 0) throw new Error('Division by zero');
+          result /= right;
+        }
+      }
+      
+      return result;
+    };
+    
+    const parseExpression = (): number => {
+      let result = parseTerm();
+      
+      while (index < expr.length && (expr[index] === '+' || expr[index] === '-')) {
+        const op = expr[index++];
+        const right = parseTerm();
+        if (op === '+') {
+          result += right;
+        } else {
+          result -= right;
+        }
+      }
+      
+      return result;
+    };
+    
+    const result = parseExpression();
+    
+    if (!isFinite(result)) {
+      throw new Error('Invalid result');
+    }
+    
+    return result;
   }
 
   private calculateFitness(expression: string): number {
@@ -215,7 +293,7 @@ export const useGeneticProgramming = () => {
   });
 
   const simulatorRef = useRef<GeneticProgrammingSimulator | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<number | null>(null);
 
   const updateParameter = useCallback((key: keyof GPParameters, value: number) => {
     setParameters(prev => ({ ...prev, [key]: value }));
@@ -246,7 +324,7 @@ export const useGeneticProgramming = () => {
         }));
 
         if (simulatorRef.current.isEvolutionRunning()) {
-          intervalRef.current = setTimeout(runGeneration, 100); // 100ms delay between generations
+          intervalRef.current = window.setTimeout(runGeneration, 100); // 100ms delay between generations
         } else {
           setEvolutionState(prev => ({ ...prev, isRunning: false }));
         }
@@ -258,7 +336,7 @@ export const useGeneticProgramming = () => {
 
   const pauseEvolution = useCallback(() => {
     if (intervalRef.current) {
-      clearTimeout(intervalRef.current);
+      window.clearTimeout(intervalRef.current);
       intervalRef.current = null;
     }
     setEvolutionState(prev => ({ ...prev, isPaused: true, isRunning: false }));
@@ -266,7 +344,7 @@ export const useGeneticProgramming = () => {
 
   const stopEvolution = useCallback(() => {
     if (intervalRef.current) {
-      clearTimeout(intervalRef.current);
+      window.clearTimeout(intervalRef.current);
       intervalRef.current = null;
     }
     if (simulatorRef.current) {
@@ -277,7 +355,7 @@ export const useGeneticProgramming = () => {
 
   const resetEvolution = useCallback(() => {
     if (intervalRef.current) {
-      clearTimeout(intervalRef.current);
+      window.clearTimeout(intervalRef.current);
       intervalRef.current = null;
     }
     if (simulatorRef.current) {
