@@ -34,11 +34,11 @@ export const ExpressionDisplay: React.FC<ExpressionDisplayProps> = ({
       // Simple expression evaluator for demonstration
       // In a real implementation, this would use the actual tree evaluation
       const cleanExpr = expr
-        .replace(/x/g, x.toString())
+        .replace(/x/g, `(${x})`)
         .replace(/×/g, '*');
       
       // This is a simplified evaluator - in production, use the actual tree
-      return eval(cleanExpr);
+      return new Function('return ' + cleanExpr)();
     } catch {
       return NaN;
     }
@@ -52,7 +52,7 @@ export const ExpressionDisplay: React.FC<ExpressionDisplayProps> = ({
       <Card className="w-full">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Function className="w-5 h-5 text-indigo-500" />
+            <Code className="w-5 h-5 text-indigo-500" />
             Best Expression
           </CardTitle>
         </CardHeader>

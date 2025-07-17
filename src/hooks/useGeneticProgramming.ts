@@ -43,9 +43,10 @@ class GeneticProgrammingSimulator {
 
   private evaluateExpression(expr: string, x: number): number {
     try {
-      // Simple expression evaluator
-      const cleanExpr = expr.replace(/x/g, x.toString());
-      return eval(cleanExpr);
+      // Simple expression evaluator - safely replace x with value
+      const cleanExpr = expr.replace(/x/g, `(${x})`);
+      // Use Function constructor instead of eval for better safety
+      return new Function('return ' + cleanExpr)();
     } catch {
       return Infinity;
     }
